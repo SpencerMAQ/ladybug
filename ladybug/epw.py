@@ -14,14 +14,16 @@ class EPW(object):
     epwPath: Local file address to an epw file
     """
 
+    # SQ: Simply assigns the epwPath to an attribute, loads other variables
     def __init__(self, epwPath=None):
         """Init class."""
-        self.epwPath = epwPath
-        self.__isDataLoaded = False
+        # invokes epwPath.setter
+        self.epwPath            = epwPath
+        self.__isDataLoaded     = False
         self.__isLocationLoaded = False
-        self.__data = []
-        self.epwHeader = None
-        self._numOfFields = 35  # it is 35 for TMY3 files
+        self.__data             = []
+        self.epwHeader          = None
+        self._numOfFields       = 35  # it is 35 for TMY3 files
 
     @property
     def epwPath(self):
@@ -46,6 +48,7 @@ class EPW(object):
         """Return True if weather data is loaded."""
         return self.__isDataLoaded
 
+    # SQ: set to True after location import from importData
     @property
     def isLocationLoaded(self):
         """Return True if location data is loaded."""
@@ -59,8 +62,13 @@ class EPW(object):
         return self._location
 
     # TODO: import EPW header. Currently I just ignore header data
+    # SQ: This method just reads the file and imports location data first
+    # also import other data:
     def importData(self, importLocationOnly=False):
         """Import data from an epw file.
+
+        Args:
+            importLocationOnly: False by default, True as called by @property location
 
         Hourly data will be saved in self.data and location data
         will be saved in self.location
@@ -73,28 +81,42 @@ class EPW(object):
             # LOCATION,Denver Centennial  Golden   Nr,CO,USA,TMY3,724666,39.74,
             # -105.18,-7.0,1829.0
             if not self.__isLocationLoaded:
-                locationData = line.strip().split(',')
-                self._location = Location()
-                self._location.city = locationData[1].replace('\\', ' ') \
-                    .replace('/', ' ')
-                self._location.country = locationData[3]
-                self._location.source = locationData[4]
-                self._location.stationId = locationData[5]
-                self._location.latitude = locationData[6]
-                self._location.longitude = locationData[7]
-                self._location.timezone = locationData[8]
-                self._location.elevation = locationData[9]
 
-                self.__isLocationLoaded = True
+                locationData                = line.strip().split(',')
+
+                # SQ creating a Location object is more practical than
+                # ...simply storing them as attributes because
+                # ...as an object, it has methods that may be useful
+                self._location              = Location()
+
+                # SQ can also be used in this form:
+                # Location(
+                #     city    =   locationData[1].replace(),
+                #     country =   locationData[3],
+                #     latitude=   locationData[4]
+                #
+                # )
+
+                self._location.city         = locationData[1].replace('\\', ' ') \
+                    .replace('/', ' ')
+                self._location.country      = locationData[3]
+                self._location.source       = locationData[4]
+                self._location.stationId    = locationData[5]
+                self._location.latitude     = locationData[6]
+                self._location.longitude    = locationData[7]
+                self._location.timezone     = locationData[8]
+                self._location.elevation    = locationData[9]
+
+                self.__isLocationLoaded     = True
 
             if importLocationOnly:
                 return
 
             # TODO: add parsing for header
-            self.epwHeader = [epwin.readline() for i in xrange(7)]
+            self.epwHeader      = [epwin.readline() for i in xrange(7)]
 
-            line = epwin.readline()
-            self._numOfFields = len(line.strip().split(','))
+            line                = epwin.readline()
+            self._numOfFields   = len(line.strip().split(','))
 
             # create an annual analysis period
             analysisPeriod = AnalysisPeriod()
@@ -102,11 +124,19 @@ class EPW(object):
             # create an empty collection for each field in epw file
             for fieldNumber in range(self._numOfFields):
                 # create header
-                field = EPWDataTypes.fieldByNumber(fieldNumber)
-                header = Header(location=self.location,
-                                analysisPeriod=analysisPeriod,
-                                dataType=field.name, unit=field.units)
 
+                # SQ: EPWDataTypes is a class defined at the bottom
+                # sample: EPWDataTypes.fieldByNumber(1) # 1=Month
+                # fieldByNumber creates an EPWField object(which itself has attrbs)
+                # ...the full look of it would be like this:
+                # EPWDataTypes.EPWField.name or EPWDataTypes.EPWField.units, etc.
+                field = EPWDataTypes.fieldByNumber(fieldNumber)
+                header = Header(location        = self.location,
+                                analysisPeriod  = analysisPeriod,
+                                dataType        = field.name,
+                                unit            = field.units)
+
+                # SQ: TODO: Why the need to create a DataCollection obj?
                 # create an empty data list with the header
                 self.__data.append(DataCollection(header=header))
 
@@ -121,14 +151,16 @@ class EPW(object):
                 timestamp = DateTime(month, day, hour - 1)
 
                 for fieldNumber in xrange(self._numOfFields):
-                    valueType = EPWDataTypes.fieldByNumber(fieldNumber).valueType
-                    value = valueType(data[fieldNumber])
+                    valueType   = EPWDataTypes.fieldByNumber(fieldNumber).valueType
+                    value       = valueType(data[fieldNumber])
                     self.__data[fieldNumber].append(DataPoint(value, timestamp))
 
                 line = epwin.readline()
 
             self.__isDataLoaded = True
 
+    # first, calls importData() if isDataLoaded == False
+    # return self.__data[fieldNumber]
     def _getDataByField(self, fieldNumber):
         """Return a data field by field number.
 
@@ -181,7 +213,7 @@ class EPW(object):
                 # cleaning up
                 modEpwFile.close()
                 lengthErrorMsg = "Data length is not 8760 hours! " + \
-                    "Data can't be saved to epw file."
+                                 "Data can't be saved to epw file."
                 raise ValueError(lengthErrorMsg)
             else:
                 modEpwFile.writelines(lines)
@@ -244,6 +276,7 @@ class EPW(object):
         """Return years as a Ladybug Data List."""
         return self._getDataByField(0)
 
+    # SQ: returns: return self._getDataByField(6)
     @property
     def dryBulbTemperature(self):
         """Return annual Dry Bulb Temperature as a Ladybug Data List.
@@ -256,7 +289,7 @@ class EPW(object):
         Read more at: https://energyplus.net/sites/all/modules/custom/nrel_custom/pdfs
             /pdfs_v8.4.0/AuxiliaryPrograms.pdf (Chapter 2.9.1)
         """
-        return self._getDataByField(6)
+        return self._getDataByField(fieldNumber=6)
 
     @property
     def dewPointTemperature(self):
@@ -645,11 +678,11 @@ class EPW(object):
 
     def __getWEAHeader(self):
         return "place %s\n" % self.location.city + \
-            "latitude %.2f\n" % self.location.latitude + \
-            "longitude %.2f\n" % -self.location.longitude + \
-            "time_zone %d\n" % (-self.location.timezone * 15) + \
-            "site_elevation %.1f\n" % self.location.elevation + \
-            "weather_data_file_units 1\n"
+               "latitude %.2f\n" % self.location.latitude + \
+               "longitude %.2f\n" % -self.location.longitude + \
+               "time_zone %d\n" % (-self.location.timezone * 15) + \
+               "site_elevation %.1f\n" % self.location.elevation + \
+               "weather_data_file_units 1\n"
 
     def toWea(self, filePath=None, hoys=None):
         """Write an wea file from the epw file.
@@ -670,10 +703,10 @@ class EPW(object):
                 dirRad = self.directNormalRadiation[hoy]
                 difRad = self.diffuseHorizontalRadiation[hoy]
                 line = "%d %d %.3f %d %d\n" \
-                    % (dirRad.datetime.month,
-                       dirRad.datetime.day,
-                       dirRad.datetime.hour + 0.5,
-                       dirRad, difRad)
+                       % (dirRad.datetime.month,
+                          dirRad.datetime.day,
+                          dirRad.datetime.hour + 0.5,
+                          dirRad, difRad)
 
                 weaFile.write(line)
 
@@ -722,196 +755,201 @@ class EPWDataTypes:
             'type': str
             },
 
-        6: {'name': 'Dry Bulb Temperature',
-            'type': float,
-            'units': 'C',
-            'min': -70,
-            'max': 70,
-            'missing': 99.9
+        6: {'name'      : 'Dry Bulb Temperature',
+            'type'      : float,
+            'units'     : 'C',
+            'min'       : -70,
+            'max'       : 70,
+            'missing'   : 99.9
             },
 
-        7: {'name': 'Dew Point Temperature',
-            'type': float,
-            'units': 'C',
-            'min': -70,
-            'max': 70,
-            'missing': 99.9
+        7: {'name'      : 'Dew Point Temperature',
+            'type'      : float,
+            'units'     : 'C',
+            'min'       : -70,
+            'max'       : 70,
+            'missing'   : 99.9
             },
 
-        8: {'name': 'Relative Humidity',
-            'type': int,
-            'missing': 999,
-            'min': 0,
-            'max': 110
+        8: {'name'      : 'Relative Humidity',
+            'type'      : int,
+            'missing'   : 999,
+            'min'       : 0,
+            'max'       : 110
             },
 
-        9: {'name': 'Atmospheric Station Pressure',
-            'type': int,
-            'units': 'Pa',
-            'missing': 999999,
-            'min': 31000,
-            'max': 120000
+        9: {'name'      : 'Atmospheric Station Pressure',
+            'type'      : int,
+            'units'     : 'Pa',
+            'missing'   : 999999,
+            'min'       : 31000,
+            'max'       : 120000
             },
 
-        10: {'name': 'Extraterrestrial Horizontal Radiation',
-             'type': int,
-             'units': 'Wh/m2',
-             'missing': 9999,
-             'min': 0
+        10: {'name'     : 'Extraterrestrial Horizontal Radiation',
+             'type'     : int,
+             'units'    : 'Wh/m2',
+             'missing'  : 9999,
+             'min'      : 0
              },
 
-        11: {'name': 'Extraterrestrial Direct Normal Radiation',
-             'type': int,
-             'units': 'Wh/m2',
-             'missing': 9999,
-             'min': 0
+        11: {'name'     : 'Extraterrestrial Direct Normal Radiation',
+             'type'     : int,
+             'units'    : 'Wh/m2',
+             'missing'  : 9999,
+             'min'      : 0
              },
 
-        12: {'name': 'Horizontal Infrared Radiation Intensity',
-             'type': int,
-             'units': 'Wh/m2',
-             'missing': 9999,
-             'min': 0
+        12: {'name'     : 'Horizontal Infrared Radiation Intensity',
+             'type'     : int,
+             'units'    : 'Wh/m2',
+             'missing'  : 9999,
+             'min'      : 0
              },
 
-        13: {'name': 'Global Horizontal Radiation',
-             'type': int,
-             'units': 'Wh/m2',
-             'missing': 9999,
-             'min': 0
+        13: {'name'     : 'Global Horizontal Radiation',
+             'type'     : int,
+             'units'    : 'Wh/m2',
+             'missing'  : 9999,
+             'min'      : 0
              },
 
-        14: {'name': 'Direct Normal Radiation',
-             'type': int,
-             'units': 'Wh/m2',
-             'missing': 9999,
-             'min': 0
+        14: {'name'     : 'Direct Normal Radiation',
+             'type'     : int,
+             'units'    : 'Wh/m2',
+             'missing'  : 9999,
+             'min'      : 0
              },
 
-        15: {'name': 'Diffuse Horizontal Radiation',
-             'type': int,
-             'units': 'Wh/m2',
-             'missing': 9999,
-             'min': 0
+        15: {'name'     : 'Diffuse Horizontal Radiation',
+             'type'     : int,
+             'units'    : 'Wh/m2',
+             'missing'  : 9999,
+             'min'      : 0
              },
 
-        16: {'name': 'Global Horizontal Illuminance',
-             'type': int,
-             'units': 'lux',
-             'missing': 999999,  # note will be missing if >= 999900
-             'min': 0
+        16: {'name'     : 'Global Horizontal Illuminance',
+             'type'     : int,
+             'units'    : 'lux',
+             'missing'  : 999999,  # note will be missing if >= 999900
+             'min'      : 0
              },
 
-        17: {'name': 'Direct Normal Illuminance',
-             'type': int,
-             'units': 'lux',
-             'missing': 999999,  # note will be missing if >= 999900
-             'min': 0
+        17: {'name'     : 'Direct Normal Illuminance',
+             'type'     : int,
+             'units'    : 'lux',
+             'missing'  : 999999,  # note will be missing if >= 999900
+             'min'      : 0
              },
 
-        18: {'name': 'Diffuse Horizontal Illuminance',
-             'type': int,
-             'units': 'lux',
-             'missing': 999999,  # note will be missing if >= 999900
-             'min': 0
+        18: {'name'     : 'Diffuse Horizontal Illuminance',
+             'type'     : int,
+             'units'    : 'lux',
+             'missing'  : 999999,  # note will be missing if >= 999900
+             'min'      : 0
              },
 
-        19: {'name': 'Zenith Luminance',
-             'type': int,
-             'units': 'Cd/m2',
-             'missing': 9999,  # note will be missing if >= 9999
-             'min': 0
+        19: {'name'     : 'Zenith Luminance',
+             'type'     : int,
+             'units'    : 'Cd/m2',
+             'missing'  : 9999,  # note will be missing if >= 9999
+             'min'      : 0
              },
 
-        20: {'name': 'Wind Direction',
-             'type': int,
-             'units': 'degrees',
-             'missing': 999,
-             'min': 0,
-             'max': 360
+        20: {'name'     : 'Wind Direction',
+             'type'     : int,
+             'units'    : 'degrees',
+             'missing'  : 999,
+             'min'      : 0,
+             'max'      : 360
              },
 
-        21: {'name': 'Wind Speed',
-             'type': float,
-             'units': 'm/s',
-             'missing': 999,
-             'min': 0,
-             'max': 40
+        21: {'name'     : 'Wind Speed',
+             'type'     : float,
+             'units'    : 'm/s',
+             'missing'  : 999,
+             'min'      : 0,
+             'max'      : 40
              },
 
-        22: {'name': 'Total Sky Cover',  # (used if Horizontal IR Intensity missing)
-             'type': int,
-             'missing': 99,
-             'min': 0,
-             'max': 10
+        22: {'name'     : 'Total Sky Cover',  # (used if Horizontal IR Intensity missing)
+             'type'     : int,
+             'missing'  : 99,
+             'min'      : 0,
+             'max'      : 10
              },
 
-        23: {'name': 'Opaque Sky Cover',  # (used if Horizontal IR Intensity missing)
-             'type': int,
-             'missing': 99
+        23: {'name'     : 'Opaque Sky Cover',  # (used if Horizontal IR Intensity missing)
+             'type'     : int,
+             'missing'  : 99
              },
 
-        24: {'name': 'Visibility',
-             'type': float,
-             'units': 'km',
-             'missing': 9999
+        24: {'name'     : 'Visibility',
+             'type'     : float,
+             'units'    : 'km',
+             'missing'  : 9999
              },
 
-        25: {'name': 'Ceiling Height',
-             'type': int,
-             'units': 'm',
-             'missing': 99999
+        25: {'name'     : 'Ceiling Height',
+             'type'     : int,
+             'units'    : 'm',
+             'missing'  : 99999
              },
 
-        26: {'name': 'Present Weather Observation',
-             'type': int
+        26: {'name'     : 'Present Weather Observation',
+             'type'     : int
              },
 
-        27: {'name': 'Present Weather Codes',
-             'type': int
+        27: {'name'     : 'Present Weather Codes',
+             'type'     : int
              },
 
-        28: {'name': 'Precipitable Water',
-             'type': int,
-             'units': 'mm',
-             'missing': 999
+        28: {'name'     : 'Precipitable Water',
+             'type'     : int,
+             'units'    : 'mm',
+             'missing'  : 999
              },
 
-        29: {'name': 'Aerosol Optical Depth',
-             'type': float,
-             'units': 'thousandths',
-             'missing': 999
+        29: {'name'     : 'Aerosol Optical Depth',
+             'type'     : float,
+             'units'    : 'thousandths',
+             'missing'  : 999
              },
 
-        30: {'name': 'Snow Depth',
-             'type': int,
-             'units': 'cm',
-             'missing': 999
+        30: {'name'     : 'Snow Depth',
+             'type'     : int,
+             'units'    : 'cm',
+             'missing'  : 999
              },
 
-        31: {'name': 'Days Since Last Snowfall',
-             'type': int,
-             'missing': 99
+        31: {'name'     : 'Days Since Last Snowfall',
+             'type'     : int,
+             'missing'  : 99
              },
 
-        32: {'name': 'Albedo',
-             'type': float,
-             'missing': 999
+        32: {'name'     : 'Albedo',
+             'type'     : float,
+             'missing'  : 999
              },
 
-        33: {'name': 'Liquid Precipitation Depth',
-             'type': float,
-             'units': 'mm',
-             'missing': 999
+        33: {'name'     : 'Liquid Precipitation Depth',
+             'type'     : float,
+             'units'    : 'mm',
+             'missing'  : 999
              },
 
-        34: {'name': 'Liquid Precipitation Quantity',
-             'type': float,
-             'units': 'hr',
-             'missing': 99
+        34: {'name'     : 'Liquid Precipitation Quantity',
+             'type'     : float,
+             'units'    : 'hr',
+             'missing'  : 99
              }
     }
 
+    # SQ: embedded object(i.e. 'nested class')
+
+    # SQ the reason this was created instead of using the class attr above
+    # ...which is a dict (__fields), is so that they'd act as attributes accessible
+    # ...using dot syntax
     class EPWField:
 
         def __init__(self, dataDict):
@@ -936,6 +974,7 @@ class EPWDataTypes:
         """
         return cls.__fields
 
+    # called by importData() from main class EPW()
     @classmethod
     def fieldByNumber(cls, fieldNumber):
         """Return an EPWField based on field number.
@@ -976,4 +1015,8 @@ class EPWDataTypes:
         33 Liquid Precipitation Depth
         34 Liquid Precipitation Quantity
         """
+
+        # EPWField is an embedded object(nested class)
+        # __fields is a class attribute as a dictionary containing a dictionary
+        # of the information per field(e.g. 30 = Snow depth)
         return cls.EPWField(cls.__fields[fieldNumber])
