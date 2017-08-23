@@ -6,15 +6,22 @@ from collections import OrderedDict
 from itertools import izip
 
 
+# TODO: don't know yet what this module is for
 class DataCollection(object):
     """A list of data with a header."""
 
+
+    # SQ: https://stackoverflow.com/questions/472000/usage-of-slots
+    # The special attribute __slots__ allows you to explicitly state which instance
+    #  attributes you expect your object instances to have
+
+    # https://docs.python.org/3/reference/datamodel.html#slots
     __slots__ = ('_header', '_values')
 
     def __init__(self, data=None, header=None):
         """Init class."""
-        self.header = header
-        self._values = []
+        self.header     = header
+        self._values    = []
 
         if not data:
             data = ()
@@ -261,9 +268,9 @@ class DataCollection(object):
                 pass
 
         print "Data %s updated for %d hour%s." % \
-            ('are' if len(values) > 1 else 'is',
-             updatedCount,
-             's' if len(values) > 1 else '')
+              ('are' if len(values) > 1 else 'is',
+               updatedCount,
+               's' if len(values) > 1 else '')
 
         # return self for chaining methods
         return self
@@ -299,7 +306,7 @@ class DataCollection(object):
         """
         assert timestep % self.header.analysisPeriod.timestep == 0, \
             'Target timestep({}) must be divisable by current timestep({})' \
-            .format(timestep, self.header.analysisPeriod.timestep)
+                .format(timestep, self.header.analysisPeriod.timestep)
 
         _minutesStep = int(60 / int(timestep / self.header.analysisPeriod.timestep))
         _dataLength = len(self.values)
@@ -434,8 +441,8 @@ class DataCollection(object):
             parsedSt = [s for s in stStatement if s.isalpha()]
             if list(set(parsedSt)) != ['x']:
                 statementErrorMsg = 'Invalid input statement. ' + \
-                    'Statement should be a valid Python statement' + \
-                    ' and the variable should be named as x'
+                                    'Statement should be a valid Python statement' + \
+                                    ' and the variable should be named as x'
                 raise ValueError(statementErrorMsg)
 
         checkInputStatement(statement)
