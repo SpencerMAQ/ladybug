@@ -2,22 +2,44 @@
 from datetime import datetime
 
 
+# Notes
+# classmethods are named constructors
+# ==== STRUCTURE ====
+# Named constructors: fromHoy, fromMoy, fromDateTimeString
+# properties: isDateTime, doy, hoy, moy, floatHour, intHOY
+# ==== STRUCTURE ====
+# EASE: Relatively easy
+# Basically works as expected
+
+# IMPORTANT NOTES:
+# The class customizes the datetime module
+# ## It customizes __new__ as well but doesn't have an init
+# ## TODO: research how this work, i.e. w/i __init__ but with __new__
+
 class DateTime(datetime):
     """Create Ladybug Date time.
 
     Args:
-        month: A value for month between 1-12. (Defualt: 1)
-        day: A value for day between 1-31. (Defualt: 1)
-        hour: A value for hour between 0-23. (Defualt: 0)
+        month:  A value for month between 1-12. (Defualt: 1)
+        day:    A value for day between 1-31. (Defualt: 1)
+        hour:   A value for hour between 0-23. (Defualt: 0)
         minute: A value for month between 0-59. (Defualt: 0)
     """
 
     __slots__ = ()
 
+    # I have no idea what's happening here but apparently just overriding datatime.__new__
+    # to make the datetime object more Ladybug-esque
+    # I have no idea though why __new__ is used instead of __init__
     def __new__(cls, month=1, day=1, hour=0, minute=0):
-        """Create Ladybug datetime."""
+        """Create Ladybug datetime.
+
+        Returns: a datetime object, 2015, Jan 01 00h 00m by default
+
+        """
         hour, minute = cls._calculateHourAndMinute(hour + minute / 60.0)
         try:
+            # super().__new__()
             return datetime.__new__(cls, 2015, month, day, hour, minute)
         except ValueError as e:
             raise ValueError("{}:\n\t({}/{}@{}:{})(m/d@h:m)".format(
@@ -144,7 +166,10 @@ class DateTime(datetime):
         return self.addhour(-hour)
 
     def toSimpleString(self, separator="_"):
-        """Return a simplified string."""
+        """Return a simplified string.
+
+        separator:  Custom separator for the datetime format
+        """
         return self.strftime('%d_%b_%H_%M').replace("_", separator)
 
     def __str__(self):
