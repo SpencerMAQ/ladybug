@@ -24,7 +24,7 @@ class Color(object):
     @r.setter
     def r(self, value):
         assert 0 <= int(value) <= 255, "%d is out of range. " % value + \
-            "R value should be between 0-255"
+                                       "R value should be between 0-255"
         self._r = int(value)
 
     @property
@@ -35,7 +35,7 @@ class Color(object):
     @g.setter
     def g(self, value):
         assert 0 <= int(value) <= 255, "%d is out of range. " % value + \
-            "G value should be between 0-255"
+                                       "G value should be between 0-255"
         self._g = int(value)
 
     @property
@@ -46,7 +46,7 @@ class Color(object):
     @b.setter
     def b(self, value):
         assert 0 <= int(value) <= 255, "%d is out of range. " % value + \
-            "B value should be between 0-255"
+                                       "B value should be between 0-255"
         self._b = int(value)
 
     def ToString(self):
@@ -58,6 +58,7 @@ class Color(object):
         return "<R:%d, G:%d, B:%d>" % (self._r, self._g, self._b)
 
 
+# SQ: also used for one part inside ColorRange
 # TODO: Add support for CMYK
 class Colorset(object):
     """Ladybug Color-range repository.
@@ -367,7 +368,7 @@ class ColorRange(object):
             except ValueError:
                 if self._ctype != 2:
                     print "Text domains can only be used in ordinal mode.\n" + \
-                        "Type is changed to ordinal."
+                          "Type is changed to ordinal."
                     self.ctype == 2
 
             if self._ctype == 0:
@@ -389,7 +390,7 @@ class ColorRange(object):
                 # Number of colors should be at least one more than number
                 # of domain Values
                 assert len(self._colors) > len(dom), "Length of colors " + \
-                    "should be more than domain values for segmented colors"
+                                                     "should be more than domain values for segmented colors"
 
             self._domain = dom
             self._isDomainSet = True
@@ -423,7 +424,7 @@ class ColorRange(object):
     @ctype.setter
     def ctype(self, t):
         assert 0 <= int(t) <= 2, "Chart Type should be between 0-2\n" + \
-            "0: continuous, 1: segmented, 2: ordinal"
+                                 "0: continuous, 1: segmented, 2: ordinal"
         self._ctype = int(t)
 
     def color(self, value):
